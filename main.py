@@ -35,7 +35,7 @@ class OCRRequest(BaseModel):
 origins = ["*"]
 client = OpenAI(
     # defaults to os.environ.get("OPENAI_API_KEY")
-    api_key="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",
+    api_key="",
 )
 app.add_middleware(
     CORSMiddleware,
