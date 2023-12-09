@@ -35,7 +35,7 @@ class OCRRequest(BaseModel):
 origins = ["*"]
 client = OpenAI(
     # defaults to os.environ.get("OPENAI_API_KEY")
-    api_key="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",
+    api_key="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",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -44,6 +44,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+def remove_prefix(text, prefix):
+  if text.startswith(prefix):
+    return text[len(prefix):]
+  return text
+
 @app.get('/healthcheck')
 async def heathcheck():
     return 'ok'
@@ -61,6 +66,8 @@ async def list_documents(customer_id: int):
     for j in client_aws.list_object_versions(Bucket='cs360-customer-document', Prefix=i['Key'])['Versions']:
       versions.append(j['VersionId'])
     i['versions'] = versions
+    i['Key'] = remove_prefix(i['Key'], '%s/'%(customer_id))
+  list.pop(0)
   return {'result': list}
 
 @app.get('/document-content')
@@ -213,9 +220,8 @@ async def ocr_func1(document_name: str, version: str, customer_id: int, recalcul
     response1 = client.chat.completions.create(
         model="gpt-4-1106-preview",
         messages=[
-            {"role": "system", "content": "You are a Financial auditor who reviews a unstructured financial statement into JSON document."},
-            {"role": "user", "content": f"convert financial statements into comprehensive balancesheet into JSON format {combined_text} in ENGLISH!!. Name, Year, Current Assets, Current Liabilities, Total Liabilities, Equity, Debt-to-Equity Ratio, Interest Coverage Ratio, Inventory, Accounts Receivable, Cash and Cash Equivalents, Retained Earnings, Fixed Assets, Long-term Debt, Accounts Payable, Prepaid Expenses, Accrued Liabilities, Deferred Tax Liabilities, Intangible Assets, Shareholder's Equity, Goodwill, Other Long-term Assets."}
-        ]
+          {"role": "system", "content": "You are a Financial auditor who reviews a unstructured financial statement into JSON document. return only JSON file, no comments, no dotted data like so on.. or similar data. be to the point"},
+          {"role": "user", "content": f"convert financial statements into comprehensive balancesheet into JSON format {combined_text} in ENGLISH!!. Name, Year, Current Assets, Current Liabilities, Total Liabilities, Equity, Debt-to-Equity Ratio, Interest Coverage Ratio, Inventory, Accounts Receivable, Cash and Cash Equivalents, Retained Earnings, Fixed Assets, Long-term Debt, Accounts Payable, Prepaid Expenses, Accrued Liabilities, Deferred Tax Liabilities, Intangible Assets, Shareholder's Equity, Goodwill, Other Long-term Assets."}        ]
     )
     elasticsearch_client.update(index="customer-document", id=resp['hits']['hits'][0]['_id'], doc={
       "response": json.dumps(response1.dict())
@@ -249,9 +255,8 @@ async def ocr_func2(document_name: str, version: str, customer_id: int, recalcul
     response2 = client.chat.completions.create(
         model="gpt-4-1106-preview",
         messages=[
-            {"role": "system", "content": "You are a Financial auditor who reviews a unstructured financial statement into JSON document. return only JSON file, no comments, no dotted data like so on.. or similar data. be to the point"},
-            {"role": "user", "content": f"convert financial statements into comprehensive income statement PnL into JSON format {combined_text}in ENGLISH!!. Name, Year, Revenue, Cost of Goods Sold, Gross Profit, Operating Expenses, Operating Income, Interest Expense, Depreciation and Amortization, Earnings Before Interest and Taxes (EBIT), Net Income, Sales & Marketing Expenses, Administrative Expenses, Research and Development Expenses, Other Operating Expenses, Earnings Before Interest, Taxes, Depreciation, and Amortization (EBITDA), Tax Expense, Net Profit Margin, Gross Margin, Other Income, Other Expenses, Dividend Income."}
-        ]
+          {"role": "system", "content": "You are a Financial auditor who reviews a unstructured financial statement into JSON document. return only JSON file, no comments, no dotted data like so on.. or similar data. be to the point"},
+          {"role": "user", "content": f"convert financial statements into comprehensive income statement PnL into JSON format {combined_text}in ENGLISH!!. Name, Year, Revenue, Cost of Goods Sold, Gross Profit, Operating Expenses, Operating Income, Interest Expense, Depreciation and Amortization, Earnings Before Interest and Taxes (EBIT), Net Income, Sales & Marketing Expenses, Administrative Expenses, Research and Development Expenses, Other Operating Expenses, Earnings Before Interest, Taxes, Depreciation, and Amortization (EBITDA), Tax Expense, Net Profit Margin, Gross Margin, Other Income, Other Expenses, Dividend Income."}
   )
     elasticsearch_client.update(index="customer-document", id=resp['hits']['hits'][0]['_id'], doc={
       "response2": json.dumps(response2.dict()),
