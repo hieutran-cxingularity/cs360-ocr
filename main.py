@@ -55,8 +55,8 @@ async def heathcheck():
 @app.post('/list-documents')
 async def list_documents(customer_id: int):
   client_aws = boto3.client("s3",
-          aws_access_key_id='AKIAVVEDCGQLGGFPWE5T',
-          aws_secret_access_key='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',
+          aws_access_key_id='',
+          aws_secret_access_key='',
           region_name='ap-southeast-1'
         )
   result =[]
